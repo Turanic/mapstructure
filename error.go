@@ -3,6 +3,7 @@ package mapstructure
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -23,6 +24,28 @@ func (e *Error) Error() string {
 	return fmt.Sprintf(
 		"%d error(s) decoding:\n\n%s",
 		len(e.Errors), strings.Join(points, "\n"))
+}
+
+type TypeError struct {
+	FieldName string
+	FieldType reflect.Type
+	FromType  reflect.Type
+	Value     interface{}
+	Err       error
+}
+
+func (e *TypeError) Error() string {
+	return e.Err.Error()
+}
+
+type ParseError struct {
+	FieldName string
+	Value     interface{}
+	Err       error
+}
+
+func (e *ParseError) Error() string {
+	return e.Err.Error()
 }
 
 // WrappedErrors implements the errwrap.Wrapper interface to make this
