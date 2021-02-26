@@ -25,6 +25,8 @@ func (e *Error) Error() string {
 		len(e.Errors), strings.Join(points, "\n"))
 }
 
+// TypeConversionError implements the error interface and embed all informations
+// related to type conversions error during decoding
 type TypeConversionError struct {
 	FieldName string
 	FieldType reflect.Type
@@ -37,6 +39,8 @@ func (e *TypeConversionError) Error() string {
 		e.FieldName, e.FieldType, e.FromType, e.Value)
 }
 
+// DecodeNumberError implements the error interface and embed all informations
+// related to errors occuring while decoding numbers
 type DecodeNumberError struct {
 	FieldName   string
 	NumberKind  reflect.Kind
