@@ -525,9 +525,12 @@ func (d *Decoder) decodeBasic(name string, data interface{}, val reflect.Value) 
 
 	dataValType := dataVal.Type()
 	if !dataValType.AssignableTo(val.Type()) {
-		return fmt.Errorf(
-			"'%s' expected type '%s', got '%s'",
-			name, val.Type(), dataValType)
+		return &TypeConversionError{
+			FieldName: name,
+			FieldType: val.Type(),
+			FromType:  dataValType,
+			Value:     data,
+		}
 	}
 
 	val.Set(dataVal)
@@ -578,9 +581,12 @@ func (d *Decoder) decodeString(name string, data interface{}, val reflect.Value)
 	}
 
 	if !converted {
-		return fmt.Errorf(
-			"'%s' expected type '%s', got unconvertible type '%s', value: '%v'",
-			name, val.Type(), dataVal.Type(), data)
+		return &TypeConversionError{
+			FieldName: name,
+			FieldType: val.Type(),
+			FromType:  dataVal.Type(),
+			Value:     data,
+		}
 	}
 
 	return nil
@@ -614,20 +620,30 @@ func (d *Decoder) decodeInt(name string, data interface{}, val reflect.Value) er
 		if err == nil {
 			val.SetInt(i)
 		} else {
-			return fmt.Errorf("cannot parse '%s' as int: %s", name, err)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Int,
+				Err:        err,
+			}
 		}
 	case dataType.PkgPath() == "encoding/json" && dataType.Name() == "Number":
 		jn := data.(json.Number)
 		i, err := jn.Int64()
 		if err != nil {
-			return fmt.Errorf(
-				"error decoding json.Number into %s: %s", name, err)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Int,
+				Err:        err,
+			}
 		}
 		val.SetInt(i)
 	default:
-		return fmt.Errorf(
-			"'%s' expected type '%s', got unconvertible type '%s', value: '%v'",
-			name, val.Type(), dataVal.Type(), data)
+		return &TypeConversionError{
+			FieldName: name,
+			FieldType: val.Type(),
+			FromType:  dataVal.Type(),
+			Value:     data,
+		}
 	}
 
 	return nil
@@ -642,8 +658,11 @@ func (d *Decoder) decodeUint(name string, data interface{}, val reflect.Value) e
 	case dataKind == reflect.Int:
 		i := dataVal.Int()
 		if i < 0 && !d.config.WeaklyTypedInput {
-			return fmt.Errorf("cannot parse '%s', %d overflows uint",
-				name, i)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Uint,
+				Err:        fmt.Errorf("%d overflows", i),
+			}
 		}
 		val.SetUint(uint64(i))
 	case dataKind == reflect.Uint:
@@ -651,8 +670,11 @@ func (d *Decoder) decodeUint(name string, data interface{}, val reflect.Value) e
 	case dataKind == reflect.Float32:
 		f := dataVal.Float()
 		if f < 0 && !d.config.WeaklyTypedInput {
-			return fmt.Errorf("cannot parse '%s', %f overflows uint",
-				name, f)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Uint,
+				Err:        fmt.Errorf("%f overflows", f),
+			}
 		}
 		val.SetUint(uint64(f))
 	case dataKind == reflect.Bool && d.config.WeaklyTypedInput:
@@ -671,24 +693,37 @@ func (d *Decoder) decodeUint(name string, data interface{}, val reflect.Value) e
 		if err == nil {
 			val.SetUint(i)
 		} else {
-			return fmt.Errorf("cannot parse '%s' as uint: %s", name, err)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Uint,
+				Err:        err,
+			}
 		}
 	case dataType.PkgPath() == "encoding/json" && dataType.Name() == "Number":
 		jn := data.(json.Number)
 		i, err := jn.Int64()
 		if err != nil {
-			return fmt.Errorf(
-				"error decoding json.Number into %s: %s", name, err)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Uint,
+				Err:        err,
+			}
 		}
 		if i < 0 && !d.config.WeaklyTypedInput {
-			return fmt.Errorf("cannot parse '%s', %d overflows uint",
-				name, i)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Uint,
+				Err:        fmt.Errorf("%d overflows", i),
+			}
 		}
 		val.SetUint(uint64(i))
 	default:
-		return fmt.Errorf(
-			"'%s' expected type '%s', got unconvertible type '%s', value: '%v'",
-			name, val.Type(), dataVal.Type(), data)
+		return &TypeConversionError{
+			FieldName: name,
+			FieldType: val.Type(),
+			FromType:  dataVal.Type(),
+			Value:     data,
+		}
 	}
 
 	return nil
@@ -714,12 +749,19 @@ func (d *Decoder) decodeBool(name string, data interface{}, val reflect.Value) e
 		} else if dataVal.String() == "" {
 			val.SetBool(false)
 		} else {
-			return fmt.Errorf("cannot parse '%s' as bool: %s", name, err)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Bool,
+				Err:        err,
+			}
 		}
 	default:
-		return fmt.Errorf(
-			"'%s' expected type '%s', got unconvertible type '%s', value: '%v'",
-			name, val.Type(), dataVal.Type(), data)
+		return &TypeConversionError{
+			FieldName: name,
+			FieldType: val.Type(),
+			FromType:  dataVal.Type(),
+			Value:     data,
+		}
 	}
 
 	return nil
@@ -753,20 +795,30 @@ func (d *Decoder) decodeFloat(name string, data interface{}, val reflect.Value) 
 		if err == nil {
 			val.SetFloat(f)
 		} else {
-			return fmt.Errorf("cannot parse '%s' as float: %s", name, err)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Float32,
+				Err:        err,
+			}
 		}
 	case dataType.PkgPath() == "encoding/json" && dataType.Name() == "Number":
 		jn := data.(json.Number)
 		i, err := jn.Float64()
 		if err != nil {
-			return fmt.Errorf(
-				"error decoding json.Number into %s: %s", name, err)
+			return &DecodeNumberError{
+				FieldName:  name,
+				NumberKind: reflect.Float32,
+				Err:        err,
+			}
 		}
 		val.SetFloat(i)
 	default:
-		return fmt.Errorf(
-			"'%s' expected type '%s', got unconvertible type '%s', value: '%v'",
-			name, val.Type(), dataVal.Type(), data)
+		return &TypeConversionError{
+			FieldName: name,
+			FieldType: val.Type(),
+			FromType:  dataVal.Type(),
+			Value:     data,
+		}
 	}
 
 	return nil
@@ -804,7 +856,12 @@ func (d *Decoder) decodeMap(name string, data interface{}, val reflect.Value) er
 		fallthrough
 
 	default:
-		return fmt.Errorf("'%s' expected a map, got '%s'", name, dataVal.Kind())
+		return &TypeConversionError{
+			FieldName: name,
+			FieldType: valType,
+			FromType:  dataVal.Type(),
+			Value:     data,
+		}
 	}
 }
 
@@ -833,7 +890,7 @@ func (d *Decoder) decodeMapFromMap(name string, dataVal reflect.Value, val refle
 	valElemType := valType.Elem()
 
 	// Accumulate errors
-	errors := make([]string, 0)
+	errors := make([]error, 0)
 
 	// If the input data is empty, then we just match what the input data is.
 	if dataVal.Len() == 0 {
@@ -1035,9 +1092,12 @@ func (d *Decoder) decodeFunc(name string, data interface{}, val reflect.Value) e
 	// into that. Then set the value of the pointer to this type.
 	dataVal := reflect.Indirect(reflect.ValueOf(data))
 	if val.Type() != dataVal.Type() {
-		return fmt.Errorf(
-			"'%s' expected type '%s', got unconvertible type '%s', value: '%v'",
-			name, val.Type(), dataVal.Type(), data)
+		return &TypeConversionError{
+			FieldName: name,
+			FieldType: val.Type(),
+			FromType:  dataVal.Type(),
+			Value:     data,
+		}
 	}
 	val.Set(dataVal)
 	return nil
@@ -1094,7 +1154,7 @@ func (d *Decoder) decodeSlice(name string, data interface{}, val reflect.Value) 
 	}
 
 	// Accumulate any errors
-	errors := make([]string, 0)
+	errors := make([]error, 0)
 
 	for i := 0; i < dataVal.Len(); i++ {
 		currentData := dataVal.Index(i).Interface()
@@ -1164,7 +1224,7 @@ func (d *Decoder) decodeArray(name string, data interface{}, val reflect.Value) 
 	}
 
 	// Accumulate any errors
-	errors := make([]string, 0)
+	errors := make([]error, 0)
 
 	for i := 0; i < dataVal.Len(); i++ {
 		currentData := dataVal.Index(i).Interface()
@@ -1226,7 +1286,12 @@ func (d *Decoder) decodeStruct(name string, data interface{}, val reflect.Value)
 		return result
 
 	default:
-		return fmt.Errorf("'%s' expected a map, got '%s'", name, dataVal.Kind())
+		return &TypeConversionError{
+			FieldName: name,
+			FieldType: val.Type(),
+			FromType:  dataVal.Type(),
+			Value:     data,
+		}
 	}
 }
 
@@ -1245,7 +1310,7 @@ func (d *Decoder) decodeStructFromMap(name string, dataVal, val reflect.Value) e
 		dataValKeysUnused[dataValKey.Interface()] = struct{}{}
 	}
 
-	errors := make([]string, 0)
+	errors := make([]error, 0)
 
 	// This slice will keep track of all the structs we'll be decoding.
 	// There can be more than one struct if there are embedded structs
