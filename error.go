@@ -31,21 +31,21 @@ type TypeError struct {
 	FieldType reflect.Type
 	FromType  reflect.Type
 	Value     interface{}
-	Err       error
 }
 
 func (e *TypeError) Error() string {
-	return e.Err.Error()
+	return fmt.Sprintf("'%s' expected type '%s', got unconvertible type '%s', value: '%v'",
+  e.FieldName, e.FieldType, e.FromType, e.Value)
 }
 
-type ParseError struct {
+type DecodeNumberError struct {
 	FieldName string
-	Value     interface{}
+  NumberKind reflect.Kind
 	Err       error
 }
 
-func (e *ParseError) Error() string {
-	return e.Err.Error()
+func (e *DecodeNumberError) Error() string {
+  return fmt.Sprintf("cannot parse '%s' as %s: %s", e.FieldName, e.NumberKind, e.Err.Error())
 }
 
 // WrappedErrors implements the errwrap.Wrapper interface to make this
