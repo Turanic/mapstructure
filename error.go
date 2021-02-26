@@ -1,7 +1,6 @@
 package mapstructure
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -11,7 +10,7 @@ import (
 // Error implements the error interface and can represents multiple
 // errors that occur in the course of a single decode.
 type Error struct {
-	Errors []string
+	Errors []error
 }
 
 func (e *Error) Error() string {
@@ -26,26 +25,27 @@ func (e *Error) Error() string {
 		len(e.Errors), strings.Join(points, "\n"))
 }
 
-type TypeError struct {
+type TypeConversionError struct {
 	FieldName string
 	FieldType reflect.Type
 	FromType  reflect.Type
 	Value     interface{}
 }
 
-func (e *TypeError) Error() string {
+func (e *TypeConversionError) Error() string {
 	return fmt.Sprintf("'%s' expected type '%s', got unconvertible type '%s', value: '%v'",
-  e.FieldName, e.FieldType, e.FromType, e.Value)
+		e.FieldName, e.FieldType, e.FromType, e.Value)
 }
 
 type DecodeNumberError struct {
-	FieldName string
-  NumberKind reflect.Kind
-	Err       error
+	FieldName   string
+	NumberKind  reflect.Kind
+	DecodeValue interface{}
+	Err         error
 }
 
 func (e *DecodeNumberError) Error() string {
-  return fmt.Sprintf("cannot parse '%s' as %s: %s", e.FieldName, e.NumberKind, e.Err.Error())
+	return fmt.Sprintf("cannot parse '%s' as %s: %s", e.FieldName, e.NumberKind, e.Err.Error())
 }
 
 // WrappedErrors implements the errwrap.Wrapper interface to make this
@@ -55,19 +55,14 @@ func (e *Error) WrappedErrors() []error {
 		return nil
 	}
 
-	result := make([]error, len(e.Errors))
-	for i, e := range e.Errors {
-		result[i] = errors.New(e)
-	}
-
-	return result
+	return e.Errors
 }
 
-func appendErrors(errors []string, err error) []string {
+func appendErrors(errors []error, err error) []error {
 	switch e := err.(type) {
 	case *Error:
 		return append(errors, e.Errors...)
 	default:
-		return append(errors, e.Error())
+		return append(errors, err)
 	}
 }

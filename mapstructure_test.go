@@ -1898,7 +1898,7 @@ func TestDecodeTable(t *testing.T) {
 			"struct with slice of struct property",
 			&SliceOfStruct{
 				Value: []Basic{
-					Basic{
+					{
 						Vstring: "vstring",
 						Vint:    2,
 						Vuint:   3,
@@ -1913,7 +1913,7 @@ func TestDecodeTable(t *testing.T) {
 			&map[string]interface{}{},
 			&map[string]interface{}{
 				"Value": []Basic{
-					Basic{
+					{
 						Vstring: "vstring",
 						Vint:    2,
 						Vuint:   3,
@@ -2068,7 +2068,7 @@ func TestInvalidType(t *testing.T) {
 		t.Fatalf("error should be kind of Error, instead: %#v", err)
 	}
 
-	if derr.Errors[0] !=
+	if derr.Errors[0].Error() !=
 		"'Vstring' expected type 'string', got unconvertible type 'int', value: '42'" {
 		t.Errorf("got unexpected error: %s", err)
 	}
@@ -2087,7 +2087,7 @@ func TestInvalidType(t *testing.T) {
 		t.Fatalf("error should be kind of Error, instead: %#v", err)
 	}
 
-  if derr.Errors[0] != "cannot parse 'Vuint' as uint: -42 overflows" {
+	if derr.Errors[0].Error() != "cannot parse 'Vuint' as uint: -42 overflows" {
 		t.Errorf("got unexpected error: %s", err)
 	}
 
@@ -2105,7 +2105,7 @@ func TestInvalidType(t *testing.T) {
 		t.Fatalf("error should be kind of Error, instead: %#v", err)
 	}
 
-  if derr.Errors[0] != "cannot parse 'Vuint' as uint: -42.000000 overflows" {
+	if derr.Errors[0].Error() != "cannot parse 'Vuint' as uint: -42.000000 overflows" {
 		t.Errorf("got unexpected error: %s", err)
 	}
 }
